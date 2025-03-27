@@ -58,7 +58,6 @@ class AccountManager:
             file.seek(0)
             file.writelines(lines)
             file.truncate()
-
     def process_arbitrage_opportunities(self, df):
         """
         Process new arbitrage opportunities and update account balances.
@@ -68,9 +67,8 @@ class AccountManager:
                 Team/Player, Bet Type, Book 1, Book 2, Profit
         """
         # Process each arbitrage opportunity
-        counter = 0
-        counter_list = []
-        for _, row in df.iterrows():
+        rows_to_drop = []
+        for index, row in df.iterrows():
             bet_name = f"{date.today()} {row['Team/Player']} {row['Bet Type']}"
             profit_per_book = round(row['Profit'] / 2, 2)  # Split profit between two books
             
@@ -80,11 +78,10 @@ class AccountManager:
                 existing_bets = self.read_bets(row['Book 1'])
                 
                 if bet_name not in existing_bets and row['Bet 1'] <= current_balance:
-                    new_balance = current_balance -  round(row['Bet 1'], 2)
+                    new_balance = current_balance - round(row['Bet 1'], 2)
                     self.update_account(row['Book 1'], new_balance, bet_name)
                 else:
-                    counter_list.append(counter)
-                    counter+=1
+                    rows_to_drop.append(index)
                     continue
             
             # Process Book 2
@@ -93,17 +90,14 @@ class AccountManager:
                 existing_bets = self.read_bets(row['Book 2'])
                 
                 if bet_name not in existing_bets and row['Bet 2'] <= current_balance:
-                    new_balance = current_balance -  round(row['Bet 2'], 2)
+                    new_balance = current_balance - round(row['Bet 2'], 2)
                     self.update_account(row['Book 2'], new_balance, bet_name)
                 else: 
-                    counter_list.append(counter)
-                    counter+=1
+                    rows_to_drop.append(index)
                     continue
-            counter+=1
-        df.drop(counter_list)
         
-
-
+        # Drop rows that couldn't be processed
+        df.drop(rows_to_drop, inplace=True)
 def main():
     open_bets = pd.read_csv("open_bets.csv")
     # Initialize account manager with sportsbook names
